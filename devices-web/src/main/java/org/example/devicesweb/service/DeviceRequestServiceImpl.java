@@ -3,6 +3,7 @@ package org.example.devicesweb.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
@@ -46,12 +47,16 @@ public class DeviceRequestServiceImpl implements DeviceRequestService {
 
     private List<Device> invoke(List<NameValuePair> headers) throws JsonProcessingException {
         String deviceUrl = environment.getProperty("resource-server.apis.devices");
-        String response = invocationService.execute(HttpPost.METHOD_NAME, deviceUrl, null, headers);
+        String response = invocationService.execute(HttpGet.METHOD_NAME, deviceUrl, null, headers);
         return objectMapper.readValue(response, new TypeReference<>() {
         });
     }
 
     private void persist(List<Device> devices) {
+        long devicesCount = deviceRepository.count();
+        if (devicesCount != 0) {
+            deviceRepository.deleteAll();
+        }
         int size = ((Collection<Device>) deviceRepository.saveAll(devices)).size();
         LOGGER.info("{} devices stored", size);
     }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/devices-web/devices-web.iml" filepath="$PROJECT_DIR$/devices-web/devices-web.iml" />
+      <module fileurl="file://$PROJECT_DIR$/resource-server/resource-server.iml" filepath="$PROJECT_DIR$/resource-server/resource-server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/spring-microservice.iml" filepath="$PROJECT_DIR$/.idea/spring-microservice.iml" />
+    </modules>
+  </component>
+</project>

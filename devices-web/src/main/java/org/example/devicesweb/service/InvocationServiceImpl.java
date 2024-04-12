@@ -74,7 +74,9 @@ public class InvocationServiceImpl implements InvocationService {
 
     private HttpPost post(String url, List<NameValuePair> parameters) {
         HttpPost request = new HttpPost(url);
-        request.setEntity(new UrlEncodedFormEntity(parameters));
+        if (Objects.nonNull(parameters)) {
+            request.setEntity(new UrlEncodedFormEntity(parameters));
+        }
         return request;
     }
 
