@@ -6,6 +6,7 @@ import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NameValuePair;
 
 import org.apache.hc.core5.http.io.entity.EntityUtils;
@@ -18,10 +19,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class InvocationServiceImpl implements InvocationService {
@@ -35,6 +33,26 @@ public class InvocationServiceImpl implements InvocationService {
         } else {
             request = post(url, parameters);
         }
+        return send(request);
+    }
+
+    @Override
+    public String execute(String method, String url, List<NameValuePair> parameters, List<NameValuePair> headers) {
+        HttpUriRequestBase request = null;
+        if (method.equals(HttpGet.METHOD_NAME)) {
+            request = get(url, parameters);
+        } else {
+            request = post(url, parameters);
+        }
+        if (!headers.isEmpty()) {
+            for (NameValuePair header : headers) {
+                request.addHeader(header.getName(), header.getValue());
+            }
+        }
+        return send(request);
+    }
+
+    private String send(HttpUriRequestBase request) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             return httpClient.execute(request, response -> EntityUtils.toString(response.getEntity()));
         } catch (IOException e) {
@@ -42,7 +60,6 @@ public class InvocationServiceImpl implements InvocationService {
             throw new RuntimeException(e);
         }
     }
-
 
     private HttpGet get(String url, List<NameValuePair> parameters) {
         try {

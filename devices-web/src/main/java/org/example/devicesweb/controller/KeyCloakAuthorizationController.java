@@ -2,6 +2,7 @@ package org.example.devicesweb.controller;
 
 import org.example.devicesweb.config.KeyCloakConfigurationProperties;
 import org.example.devicesweb.model.TokenResponse;
+import org.example.devicesweb.service.DeviceRequestService;
 import org.example.devicesweb.service.KeyCloakAuthorizationService;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,10 +19,12 @@ import static org.example.devicesweb.constant.KeyCloakTypeRequestProperties.AUTH
 public class KeyCloakAuthorizationController {
     private final KeyCloakAuthorizationService keyCloakAuthorizationService;
     private final KeyCloakConfigurationProperties keyCloakConfigurationProperties;
+    private final DeviceRequestService deviceRequestService;
 
-    public KeyCloakAuthorizationController(KeyCloakAuthorizationService keyCloakAuthorizationService, KeyCloakConfigurationProperties keyCloakConfigurationProperties) {
+    public KeyCloakAuthorizationController(KeyCloakAuthorizationService keyCloakAuthorizationService, KeyCloakConfigurationProperties keyCloakConfigurationProperties, DeviceRequestService deviceRequestService) {
         this.keyCloakAuthorizationService = keyCloakAuthorizationService;
         this.keyCloakConfigurationProperties = keyCloakConfigurationProperties;
+        this.deviceRequestService = deviceRequestService;
     }
 
     @GetMapping("/auth")
@@ -30,13 +33,14 @@ public class KeyCloakAuthorizationController {
     }
 
     @GetMapping("/token")
-    public void token(@RequestParam String state,
+    public RedirectView token(@RequestParam String state,
                               @RequestParam(value = "session_state") String sessionState,
                               @RequestParam String iss,
                               @RequestParam String code) throws HttpClientErrorException.BadRequest {
         if (matchingState(state)) {
             TokenResponse tokenResponse = keyCloakAuthorizationService.getAccessToken(code);
-            String url = null;
+            deviceRequestService.request(tokenResponse);
+            return new RedirectView("http://localhost:8000/devices");
         } else {
             throw new RuntimeException("State is not valid: " + state);
         }

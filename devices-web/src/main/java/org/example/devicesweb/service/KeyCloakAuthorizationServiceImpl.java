@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.view.RedirectView;
 
+import javax.naming.Name;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -43,17 +44,10 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
     @Override
     public RedirectView directAuthorizationCodeView() {
         KeyCloakRequestParameters keyCloakRequestParameters = keyCloakConfigurationProperties.getRequest().get(AUTHORIZATION_CODE);
-        List<NameValuePair> parameters = new ArrayList<>() {
-            {
-                add(new BasicNameValuePair(CLIENT_ID, keyCloakConfigurationProperties.getClientId()));
-                add(new BasicNameValuePair(RESPONSE_TYPE, keyCloakRequestParameters.getResponseType()));
-                add(new BasicNameValuePair(SCOPE, keyCloakRequestParameters.getScope()));
-                add(new BasicNameValuePair(REDIRECT_URI, keyCloakRequestParameters.getRedirectUri()));
-                add(new BasicNameValuePair(STATE, keyCloakRequestParameters.getState()));
-            }
-        };
+        List<NameValuePair> parameters = this.getAuthorizationCodeRequestParameters(keyCloakRequestParameters);
         try {
-            return new RedirectView(buildUri(openIdConfigurationProperties.getAuthorizationEndpoint(), parameters).toString());
+            String uri = getAuthorizationCodeUri(openIdConfigurationProperties.getAuthorizationEndpoint(), parameters).toString();
+            return new RedirectView(uri);
         } catch (URISyntaxException e) {
             LOGGER.error("Error occurs when attempt to build uri {}", e.getMessage());
             throw new RuntimeException(e);
@@ -63,16 +57,7 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
     @Override
     public TokenResponse getAccessToken(String code) {
         KeyCloakRequestParameters keyCloakRequestParameters = keyCloakConfigurationProperties.getRequest().get(ACCESS_TOKEN);
-        List<NameValuePair> parameters = new ArrayList<>() {
-            {
-                add(new BasicNameValuePair(CLIENT_ID, keyCloakConfigurationProperties.getClientId()));
-                add(new BasicNameValuePair(CLIENT_SECRET, keyCloakConfigurationProperties.getClientSecret()));
-                add(new BasicNameValuePair(GRANT_TYPE, keyCloakRequestParameters.getGrantType()));
-                add(new BasicNameValuePair(CODE, code));
-                add(new BasicNameValuePair(REDIRECT_URI, keyCloakRequestParameters.getRedirectUri()));
-                add(new BasicNameValuePair(SCOPE, keyCloakRequestParameters.getScope()));
-            }
-        };
+        List<NameValuePair> parameters = this.getAccessTokenRequestParameters(keyCloakRequestParameters, code);
         try {
             String response = invocationService.execute(
                     HttpPost.METHOD_NAME,
@@ -86,7 +71,33 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
         }
     }
 
-    private URI buildUri(String url, List<NameValuePair> parameters) throws URISyntaxException {
+    private List<NameValuePair> getAuthorizationCodeRequestParameters(KeyCloakRequestParameters keyCloakRequestParameters) {
+        return new ArrayList<>() {
+            {
+                add(new BasicNameValuePair(CLIENT_ID, keyCloakConfigurationProperties.getClientId()));
+                add(new BasicNameValuePair(RESPONSE_TYPE, keyCloakRequestParameters.getResponseType()));
+                add(new BasicNameValuePair(SCOPE, keyCloakRequestParameters.getScope()));
+                add(new BasicNameValuePair(REDIRECT_URI, keyCloakRequestParameters.getRedirectUri()));
+                add(new BasicNameValuePair(STATE, keyCloakRequestParameters.getState()));
+            }
+        };
+    }
+
+    private List<NameValuePair> getAccessTokenRequestParameters(KeyCloakRequestParameters keyCloakRequestParameters, String code) {
+        return new ArrayList<>() {
+            {
+                add(new BasicNameValuePair(CLIENT_ID, keyCloakConfigurationProperties.getClientId()));
+                add(new BasicNameValuePair(CLIENT_SECRET, keyCloakConfigurationProperties.getClientSecret()));
+                add(new BasicNameValuePair(GRANT_TYPE, keyCloakRequestParameters.getGrantType()));
+                add(new BasicNameValuePair(CODE, code));
+                add(new BasicNameValuePair(REDIRECT_URI, keyCloakRequestParameters.getRedirectUri()));
+                add(new BasicNameValuePair(SCOPE, keyCloakRequestParameters.getScope()));
+            }
+        };
+    }
+
+
+    private URI getAuthorizationCodeUri(String url, List<NameValuePair> parameters) throws URISyntaxException {
         url += QUESTION_MARK;
         for (int i = 0; i < parameters.size(); i++) {
             NameValuePair parameter = parameters.get(i);
@@ -97,6 +108,8 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
         }
         return new URI(url);
     }
+
+
 
     private OpenIdConfigurationProperties extract(String configUrl) {
         try {
