@@ -6,11 +6,12 @@ import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.NameValuePair;
 
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.message.BasicNameValuePair;
+import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
+import org.apache.hc.core5.http.message.BasicHttpResponse;
 import org.apache.hc.core5.net.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ public class InvocationServiceImpl implements InvocationService {
     private final static Logger LOGGER = LoggerFactory.getLogger(InvocationServiceImpl.class);
 
     @Override
-    public String execute(String method, String url, List<NameValuePair> parameters) {
+    public HttpResponse execute(String method, String url, List<NameValuePair> parameters) {
         HttpUriRequestBase request = null;
         if (method.equals(HttpGet.METHOD_NAME)) {
             request = get(url, parameters);
@@ -37,7 +38,7 @@ public class InvocationServiceImpl implements InvocationService {
     }
 
     @Override
-    public String execute(String method, String url, List<NameValuePair> parameters, List<NameValuePair> headers) {
+    public HttpResponse execute(String method, String url, List<NameValuePair> parameters, List<NameValuePair> headers) {
         HttpUriRequestBase request = null;
         if (method.equals(HttpGet.METHOD_NAME)) {
             request = get(url, parameters);
@@ -52,9 +53,15 @@ public class InvocationServiceImpl implements InvocationService {
         return send(request);
     }
 
-    private String send(HttpUriRequestBase request) {
+    private HttpResponse send(HttpUriRequestBase request) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            return httpClient.execute(request, response -> EntityUtils.toString(response.getEntity()));
+            return httpClient
+                    .execute(request, response ->
+                            new BasicHttpResponse(
+                                    response.getCode(),
+                                    EntityUtils.toString(response.getEntity())
+                            )
+                    );
         } catch (IOException e) {
             LOGGER.error("Error occurs when executing request {}", e.getMessage());
             throw new RuntimeException(e);

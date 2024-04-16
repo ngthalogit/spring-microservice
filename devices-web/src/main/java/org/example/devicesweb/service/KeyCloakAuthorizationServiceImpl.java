@@ -4,9 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.example.devicesweb.config.KeyCloakConfigurationProperties;
+import org.example.devicesweb.exception.UnAuthorizedAccessToken;
 import org.example.devicesweb.model.KeyCloakRequestParameters;
 import org.example.devicesweb.model.OpenIdConfigurationProperties;
 import org.example.devicesweb.model.TokenResponse;
@@ -15,11 +17,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.view.RedirectView;
 
-import javax.naming.Name;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.example.devicesweb.constant.GrantTypeRequestParameters.*;
 import static org.example.devicesweb.constant.KeyCloakTypeRequestProperties.ACCESS_TOKEN;
@@ -43,28 +45,44 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
 
     @Override
     public RedirectView directAuthorizationCodeView() {
+        Optional.ofNullable(keyCloakConfigurationProperties.getRequest())
+                .orElseThrow(() -> new RuntimeException("Not found keycloak.request configuration properties"));
+        Optional.ofNullable(keyCloakConfigurationProperties.getRequest().get(AUTHORIZATION_CODE))
+                .orElseThrow(() -> new RuntimeException("Not found keycloak.request.authorization-code configuration properties"));
+
         KeyCloakRequestParameters keyCloakRequestParameters = keyCloakConfigurationProperties.getRequest().get(AUTHORIZATION_CODE);
         List<NameValuePair> parameters = this.getAuthorizationCodeRequestParameters(keyCloakRequestParameters);
         try {
+            Optional.ofNullable(openIdConfigurationProperties.getAuthorizationEndpoint())
+                    .orElseThrow(() -> new RuntimeException("Not found authorization_endpoint"));
             String uri = getAuthorizationCodeUri(openIdConfigurationProperties.getAuthorizationEndpoint(), parameters).toString();
             return new RedirectView(uri);
-        } catch (URISyntaxException e) {
+        } catch (URISyntaxException | RuntimeException e) {
             LOGGER.error("Error occurs when attempt to build uri {}", e.getMessage());
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public TokenResponse getAccessToken(String code) {
+    public TokenResponse getAccessToken(String code) throws RuntimeException, UnAuthorizedAccessToken {
+        Optional.ofNullable(keyCloakConfigurationProperties.getRequest())
+                .orElseThrow(() -> new RuntimeException("Not found keycloak.request configuration properties"));
+        Optional.ofNullable(keyCloakConfigurationProperties.getRequest().get(ACCESS_TOKEN))
+                .orElseThrow(() -> new RuntimeException("Not found keycloak.request.access-token configuration properties"));
+
         KeyCloakRequestParameters keyCloakRequestParameters = keyCloakConfigurationProperties.getRequest().get(ACCESS_TOKEN);
         List<NameValuePair> parameters = this.getAccessTokenRequestParameters(keyCloakRequestParameters, code);
         try {
-            String response = invocationService.execute(
+            HttpResponse response = invocationService.execute(
                     HttpPost.METHOD_NAME,
                     openIdConfigurationProperties.getTokenEndpoint(),
                     parameters
             );
-            return objectMapper.readValue(response, TokenResponse.class);
+            if (response.getCode() == 200) {
+                return objectMapper.readValue(response.getReasonPhrase(), TokenResponse.class);
+            }
+            throw new RuntimeException(response.getReasonPhrase());
+
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurs when attempt to extract openid config {}", e.getMessage());
             throw new RuntimeException(e);
@@ -82,6 +100,7 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
             }
         };
     }
+
 
     private List<NameValuePair> getAccessTokenRequestParameters(KeyCloakRequestParameters keyCloakRequestParameters, String code) {
         return new ArrayList<>() {
@@ -110,15 +129,17 @@ public class KeyCloakAuthorizationServiceImpl implements KeyCloakAuthorizationSe
     }
 
 
-
     private OpenIdConfigurationProperties extract(String configUrl) {
         try {
-            String response = invocationService.execute(
+            HttpResponse response = invocationService.execute(
                     HttpGet.METHOD_NAME,
                     configUrl,
                     null
             );
-            return objectMapper.readValue(response, OpenIdConfigurationProperties.class);
+            if (response.getCode() == 200) {
+                return objectMapper.readValue(response.getReasonPhrase(), OpenIdConfigurationProperties.class);
+            }
+            throw new RuntimeException(response.getReasonPhrase());
         } catch (JsonProcessingException e) {
             LOGGER.error("Error occurs when attempt to extract openid config {}", e.getMessage());
             throw new RuntimeException(e);
