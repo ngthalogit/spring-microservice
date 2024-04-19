@@ -52,7 +52,7 @@ public class DeviceRequestServiceImpl implements DeviceRequestService {
             return objectMapper.readValue(response.getReasonPhrase(), new TypeReference<>() {
             });
         }
-        if (response.getCode() == 403) {
+        if (response.getCode() == 403 || response.getCode() == 401) {
             LOGGER.info("Access token for Resource-Server is invalid {}", response.getReasonPhrase());
         }
         throw new RuntimeException(response.getReasonPhrase());

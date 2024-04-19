@@ -14,10 +14,11 @@
 </head>
 <body>
 <div class="container vh-100">
+<!--    <h6 class="text"></h6>-->
     <div class="text-center mt-5">
         <h1>Device Table</h1>
     </div>
-    <div class="container">
+    <div class="container mt-5">
         <div class="scrollable-table">
             <table class="table table-striped">
                 <thead>
@@ -26,6 +27,8 @@
                     <th scope="col">Name</th>
                     <th scope="col">Description</th>
                     <th scope="col">Price</th>
+<!--                    <th scope="col"></th>-->
+
                 </tr>
                 </thead>
                 <tbody>
@@ -34,10 +37,17 @@
                     <td th:text="${device.name}"></td>
                     <td th:text="${device.description}"></td>
                     <td th:text="${device.price}"></td>
+<!--                    <td>-->
+<!--                        <button type="button" class="btn btn-primary">Edit</button>-->
+<!--                        <button type="button" class="btn btn-danger">Delete</button>-->
+<!--                    </td>-->
                 </tr>
                 </tbody>
             </table>
         </div>
+<!--        <div class="container">-->
+<!--            <button type="button" class="btn btn-success">Add device</button>-->
+<!--        </div>-->
     </div>
 
 </div>
